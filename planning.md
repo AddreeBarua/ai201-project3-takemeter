@@ -28,22 +28,30 @@ This is hard because it has the *shape* of analysis — specific, detailed, tied
 
 ## Data Collection Plan
 
-I'll collect comments from old.reddit.com/r/nba, pulling from multiple threads across different days and topic types — not just one day's news cycle — to avoid skewing toward a single event. Specifically:
+I collected comments from old.reddit.com/r/nba, pulling from multiple threads across different days and topic types — not just one day's news cycle — to avoid skewing toward a single event. Specifically:
 - On-court/performance/roster threads (trade speculation, player evaluation, game recaps) for `analysis` and `hot_take` examples
 - Off-court/controversy threads (parades, fan incidents, league news) for `reaction` and `hot_take` examples
 
-Target: roughly 65–70 examples per label (200+ total, no label over 70%). If a label is underrepresented after an initial pass, I'll target threads more likely to produce it specifically — e.g., box-score/stat-heavy game threads tend to produce more `analysis`, while live game-thread comments tend to produce more `reaction`.
+Final dataset: 200 labeled examples across three labels — analysis (66), hot_take (64), reaction (70). No label exceeded 35% of the dataset, well within the 70% cap requirement.
 
 ## Evaluation Metrics
 
-I'll report overall accuracy for both models, but accuracy alone can hide a model that just predicts the majority class well and ignores minority labels. So I'll also report per-class F1, since it balances precision and recall and gives one number per label that reflects whether the model is actually learning that label's boundary rather than defaulting to it. I'll also use the confusion matrix to see directional errors — e.g., whether `analysis` and `hot_take` specifically get confused with each other, which is the boundary I expect to be hardest given my edge case.
+I reported overall accuracy for both models, but accuracy alone can hide a model that just predicts the majority class well and ignores minority labels. I also reported per-class F1, since it balances precision and recall and gives one number per label that reflects whether the model is actually learning that label's boundary rather than defaulting to it. The confusion matrix revealed directional errors — specifically whether `analysis` and `hot_take` get confused with each other, which was the boundary I anticipated being hardest given my edge case.
 
 ## Definition of Success
 
-I'll consider the fine-tuned model genuinely useful if it achieves per-class F1 ≥ 0.65 on all three labels and outperforms the zero-shot Groq baseline by at least 10 percentage points in overall accuracy. If the model can't clear F1 ≥ 0.50 on any one class, that's a signal the label boundary itself needs to be revisited rather than just adding more data.
+I defined success as per-class F1 ≥ 0.65 on all three labels and outperforming the zero-shot Groq baseline by at least 10 percentage points in overall accuracy. The fine-tuned model did not meet this threshold. The hot_take label had F1 = 0.00 on the test set, and the overall fine-tuned accuracy (56.7%) was lower than the baseline (83.3%). This is documented and analyzed in the README evaluation report.
 
 ## AI Tool Plan
 
-* Label definition review: Before starting full annotation, I used an LLM as a second opinion to review a small sample of Reddit comments against my labeling guidelines. This helped identify unclear cases, refine label definitions, and improve consistency before manually labeling the full dataset.
-* Annotation workflow support: I manually reviewed and labeled the dataset, using an LLM only as an optional reference for a subset of examples where I wanted an additional perspective. Any AI-generated suggestions were treated as recommendations only — I independently checked each example and made the final labeling decision. AI-assisted rows are documented in the `notes` column for transparency.
-* Error analysis support: After model training, I plan to use an LLM as a review assistant to help organize misclassified examples and identify possible patterns in model errors. I will manually analyze these cases, verify the reasoning against the original text, and use my own judgment when reporting.
+* **Label definition review: Before starting the full annotation process, I personally reviewed a sample of Reddit comments and developed my labeling guidelines. I used an LLM as a secondary check to test whether my label definitions were clear and whether any edge cases needed clarification. Based on this feedback, I refined my guidelines before manually labeling the full dataset.
+  
+* **Annotation workflow support: I collected and labeled the dataset myself using the defined criteria. For a small subset of examples, I consulted an LLM to compare interpretations of difficult cases. The AI output was only used as a reference point; I manually reviewed every example and made the final labeling decision based on my own judgment.
+ 
+* **Error analysis support: After training the model, I analyzed the evaluation results and confusion matrix to understand where the model struggled. I used an LLM as a brainstorming aid to help organize possible error patterns, then manually verified those patterns by reviewing the original examples. The analysis showed that the model correctly classified analysis (10/10) and reaction (7/10), but struggled with hot_take (0/10), often confusing hot_take examples with analysis (9/10 misclassified as analysis). I confirmed this behavior through my own review before including it in the evaluation report.
+
+## Post-Training Notes
+
+The fine-tuned model did not meet the success criteria defined above. The hot_take label had F1 = 0.00 on the test set, driven by the model collapsing to a near-binary classifier (analysis vs reaction) and never predicting hot_take. This signals that the boundary between hot_take and analysis was too subtle for DistilBERT to learn reliably from 64 training examples — hot_take sits between the other two labels in terms of evidence and structure, making it the hardest to separate with limited data.
+
+The baseline (Groq llama-3.3-70b-versatile) outperformed the fine-tuned model at 83.3% vs 56.7%. This is itself an informative result — it shows that a large pretrained model with well-defined label definitions in the prompt can outperform a small fine-tuned model on limited, subjectively labeled data. More training examples, tighter label definitions, or a larger base model would likely close this gap.
